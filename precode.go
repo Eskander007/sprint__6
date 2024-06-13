@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -53,11 +54,15 @@ func getTasks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	//_, _ = w.Write(resp) такая запись я так понял это будет "явное игнорирование"
+	_, err = w.Write(resp)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // Обработчик для отправки задачи на сервер
-func postTask(w http.ResponseWriter, r *http.Request) {
+func addTask(w http.ResponseWriter, r *http.Request) {
 	var task Task
 	var buf bytes.Buffer
 
@@ -71,7 +76,12 @@ func postTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	//Проверка по ID на наличие задачи в списке
+	_, ok := tasks[task.ID]
+	if ok {
+		http.Error(w, "Задача c таким ID уже существует", http.StatusBadRequest)
+		return
+	}
 	tasks[task.ID] = task
 
 	w.Header().Set("Content-Type", "application/json")
@@ -96,7 +106,10 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	_, err = w.Write(resp)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // Обработчик удаления задачи по ID
@@ -123,7 +136,7 @@ func main() {
 	// регистрируем в роутере эндпоинт `/tasks` с методом GET
 	r.Get("/tasks", getTasks)
 	// регистрируем в роутере эндпоинт `/tasks` с методом POST
-	r.Post("/tasks", postTask)
+	r.Post("/tasks", addTask)
 	// регистрируем в роутере эндпоинт `/tasks/{id}` с методом GET
 	r.Get("/tasks/{id}", getTask)
 	// регистрируем в роутере эндпоинт `/tasks/{id}` с методом DELETE
